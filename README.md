@@ -516,6 +516,7 @@ python -m pytest tests -q
 - TXT files provide content but not formatting information.
 - Generated notes imitate writing style rather than copying previous notes.
 - The quality of generated notes depends on the quality of the transcript.
+- Note generation can sometimes still fail. Click the "Generate Formatted Notes" button again to re-try, or try rerunning the streamlit app.
 - Ollama must be installed locally.
 - The application currently generates Microsoft Word documents only.
 

@@ -6,6 +6,7 @@ import httpx
 import ollama
 from ollama import Client
 from config import (
+    MAX_QUALITY_REPAIR_ATTEMPTS,
     OLLAMA_HOST,
     OLLAMA_MODEL,
     OLLAMA_NUM_PREDICT,
@@ -113,23 +114,35 @@ class NoteGenerator:
         report_progress(progress_callback, 79, "Repaired model output validated")
         return normalized
     
-    def generate_quality_checked(self, prompt: str, transcript: str, progress_callback: ProgressCallback | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    def generate_quality_checked(
+        self,
+        prompt: str,
+        transcript: str,
+        progress_callback: ProgressCallback | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
-        Generate structured notes and check their content quality.
+        Generate structured notes and validate their content quality.
 
-        One additional quality-repair request is made only when the
-        generated notes contain serious content errors.
+        If the first result contains vague, incomplete, or placeholder
+        content, a limited number of quality-repair attempts are made.
         """
 
         prompt = self._validate_prompt(prompt)
 
         if not isinstance(transcript, str) or not transcript.strip():
             raise ValueError(
-                "A non-empty transcript is required for content-quality checking."
+                "A non-empty transcript is required for "
+                "content-quality checking."
             )
 
         transcript = transcript.strip()
-        notes = self.generate_structured(prompt, progress_callback=progress_callback)
+
+        # Generate and structurally validate the initial notes.
+        notes = self.generate_structured(
+            prompt,
+            progress_callback=progress_callback,
+        )
+
         quality = self.quality_validator.evaluate(
             notes=notes,
             transcript=transcript,
@@ -137,52 +150,138 @@ class NoteGenerator:
 
         if quality["passed"]:
             logger.info(
-                "Generated notes passed content-quality validation with score %d.",
+                "Generated notes passed content-quality validation "
+                "with score %d.",
                 quality["score"],
             )
-            report_progress(progress_callback, 84, "Generated notes passed content-quality validation")
+
+            report_progress(
+                progress_callback,
+                84,
+                "Generated notes passed content-quality validation",
+            )
             return notes, quality
 
         logger.warning(
-            "Generated notes failed content-quality validation. Attempting one quality repair."
-        )
-        report_progress(progress_callback, 82, "Improving weak or placeholder note content")
-
-        repair_prompt = CONTENT_QUALITY_REPAIR_TEMPLATE.format(
-            quality_feedback=self.quality_validator.build_repair_feedback(quality),
-            transcript=transcript,
-            current_notes=json.dumps(
-                notes,
-                indent=2,
-                ensure_ascii=False,
-            ),
-            schema=self._get_schema_text(),
+            "Initial generated notes failed content-quality validation "
+            "(score=%d, errors=%d, warnings=%d).",
+            quality["score"],
+            len(quality.get("errors", [])),
+            len(quality.get("warnings", [])),
         )
 
-        repaired_response = self._request(repair_prompt)
-        repaired_data = self._parse_json_response(repaired_response)
-        repaired_notes = self.schema.normalize(repaired_data)
-        self._ensure_usable_notes(repaired_notes)
+        # Reuse the most recently generated notes and quality report during each repair attempt.
+        current_notes = notes
+        current_quality = quality
 
-        repaired_quality = self.quality_validator.evaluate(
-            notes=repaired_notes,
-            transcript=transcript,
-        )
-
-        if not repaired_quality["passed"]:
-            raise ValueError(
-                "Ollama produced structurally valid notes, but the content remained "
-                "too vague or contained placeholders after one repair attempt. "
-                "Try generating again or use a shorter, clearer transcript."
+        for attempt in range(
+            1,
+            MAX_QUALITY_REPAIR_ATTEMPTS + 1,
+        ):
+            logger.warning(
+                "Starting content-quality repair attempt %d of %d.",
+                attempt,
+                MAX_QUALITY_REPAIR_ATTEMPTS,
             )
 
-        logger.info(
-            "Content-quality repair succeeded with score %d.",
-            repaired_quality["score"],
-        )
+            progress_percent = min(82 + ((attempt - 1) * 2), 85,)
 
-        report_progress(progress_callback, 86, "Improved notes passed content-quality validation")
-        return repaired_notes, repaired_quality
+            report_progress(
+                progress_callback,
+                progress_percent,
+                (
+                    "Improving weak or placeholder note content "
+                    f"(attempt {attempt} of "
+                    f"{MAX_QUALITY_REPAIR_ATTEMPTS})"
+                ),
+            )
+
+            repair_prompt = CONTENT_QUALITY_REPAIR_TEMPLATE.format(
+                quality_feedback=(
+                    self.quality_validator.build_repair_feedback(
+                        current_quality
+                    )
+                ),
+                transcript=transcript,
+                current_notes=json.dumps(
+                    current_notes,
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+                schema=self._get_schema_text(),
+            )
+
+            try:
+                # generate_structured() also handles malformed JSON and performs one structural repair when necessary.
+                repaired_notes = self.generate_structured(
+                    repair_prompt,
+                    progress_callback=None,
+                )
+
+            except (
+                ValueError,
+                RuntimeError,
+                ConnectionError,
+                TimeoutError,
+            ) as error:
+                logger.warning(
+                    "Content-quality repair attempt %d could not produce "
+                    "usable structured notes: %s",
+                    attempt,
+                    error,
+                )
+
+                if attempt == MAX_QUALITY_REPAIR_ATTEMPTS:
+                    raise ValueError(
+                        "Ollama could not produce usable notes after "
+                        f"{MAX_QUALITY_REPAIR_ATTEMPTS} content-quality "
+                        "repair attempts. Try generating again or use a "
+                        "shorter, clearer transcript."
+                    ) from error
+
+                continue
+
+            repaired_quality = self.quality_validator.evaluate(
+                notes=repaired_notes,
+                transcript=transcript,
+            )
+
+            if repaired_quality["passed"]:
+                logger.info(
+                    "Content-quality repair attempt %d succeeded "
+                    "with score %d.",
+                    attempt,
+                    repaired_quality["score"],
+                )
+
+                report_progress(
+                    progress_callback,
+                    86,
+                    "Improved notes passed content-quality validation",
+                )
+
+                return repaired_notes, repaired_quality
+
+            logger.warning(
+                "Content-quality repair attempt %d did not pass "
+                "(score=%d, errors=%d, warnings=%d).",
+                attempt,
+                repaired_quality["score"],
+                len(repaired_quality.get("errors", [])),
+                len(repaired_quality.get("warnings", [])),
+            )
+
+            # The next repair attempt should improve the newest result,
+            # rather than starting again from the original weak notes.
+            current_notes = repaired_notes
+            current_quality = repaired_quality
+
+        raise ValueError(
+            "Ollama produced structurally valid notes, but the content "
+            "remained too vague, incomplete, or contained placeholders "
+            f"after {MAX_QUALITY_REPAIR_ATTEMPTS} repair attempts. "
+            "Try generating again or use a shorter, clearer transcript."
+        )
 
     def check_connection(self) -> bool:
         """Return True when the local Ollama service can be reached."""

@@ -1,0 +1,91 @@
+{
+    "profile_version": 1,
+    "source_files": [
+        "Software Engineering - 15_01_26-1.pdf",
+        "Software Engineering - 19_12_25-1.pdf",
+        "Software Engineering - 21_10_25-1.pdf"
+    ],
+    "source_file_count": 3,
+    "page": {
+        "width": 596.0,
+        "height": 842.0,
+        "margin_left": 72.0,
+        "margin_right": 70.7,
+        "margin_top": 72.4,
+        "margin_bottom": 99.4
+    },
+    "body": {
+        "font": "Arial",
+        "font_size": 11.0,
+        "bold": false,
+        "italic": false,
+        "color": "#000000",
+        "line_spacing_points": 14.6,
+        "line_spacing_ratio": 1.33,
+        "paragraph_spacing_before": 0.0,
+        "paragraph_spacing_after": 12.3
+    },
+    "title": {
+        "font": "Arial",
+        "font_size": 16.0,
+        "bold": false,
+        "italic": false,
+        "color": "#000000",
+        "alignment": "left",
+        "spacing_after": 12.0
+    },
+    "heading_1": {
+        "font": "Arial",
+        "font_size": 16.0,
+        "bold": false,
+        "italic": false,
+        "color": "#000000",
+        "spacing_before": 12.0,
+        "spacing_after": 6.0
+    },
+    "heading_2": {
+        "font": "Arial",
+        "font_size": 11.0,
+        "bold": true,
+        "italic": false,
+        "color": "#000000",
+        "spacing_before": 10.0,
+        "spacing_after": 5.0
+    },
+    "heading_3": {
+        "font": "Arial",
+        "font_size": 12.0,
+        "bold": true,
+        "italic": false,
+        "color": "#000000",
+        "spacing_before": 8.0,
+        "spacing_after": 4.0
+    },
+    "bullet": {
+        "font": "Arial",
+        "font_size": 11.0,
+        "color": "#000000",
+        "indent_left": 36.0,
+        "hanging_indent": 12.6,
+        "nested_indent_increment": 36.0,
+        "spacing_after": 3.0
+    },
+    "common_colors": [
+        {
+            "color": "#000000",
+            "text_weight": 29116,
+            "percentage": 99.76
+        },
+        {
+            "color": "#1155CC",
+            "text_weight": 71,
+            "percentage": 0.24
+        }
+    ],
+    "analysis": {
+        "documents_processed": 3,
+        "pages_processed": 14,
+        "lines_processed": 522,
+        "spans_processed": 692
+    }
+}

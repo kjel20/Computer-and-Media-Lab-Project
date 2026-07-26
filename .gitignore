@@ -1,0 +1,66 @@
+# Python cache and compiled files
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+
+venv/
+.venv/
+env/
+ENV/
+
+# Pytest and coverage files
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE and editor settings
+
+.vscode/
+.idea/
+*.code-workspace
+
+# Operating-system files
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary and backup files
+
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+~$*.docx
+
+# Generated audio recordings
+
+data/audio/*
+!data/audio/.gitkeep
+
+# Generated transcripts
+
+data/transcripts/*
+!data/transcripts/.gitkeep
+
+# Generated Word documents
+
+data/generated_documents/*
+!data/generated_documents/.gitkeep
+
+# Application logs
+
+logs/*
+!logs/.gitkeep
+
+# Local environment and secret files
+
+.env
+.env.*
+!.env.example

@@ -1,0 +1,21 @@
+{
+    "title": {
+        "font_size": 18.0,
+        "bold": true
+    },
+    "heading_1": {
+        "font_size": 16.0,
+        "bold": true
+    },
+    "heading_2": {
+        "font_size": 13.0,
+        "bold": true
+    },
+    "heading_3": {
+        "font_size": 11.0,
+        "bold": true
+    },
+    "page": {
+        "margin_bottom": 72.0
+    }
+}
